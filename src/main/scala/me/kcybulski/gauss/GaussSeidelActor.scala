@@ -42,8 +42,8 @@ object GaussSeidelActor {
 
   def props(rows: Array[Array[Double]], iterations: Int = 100) = Props(new GaussSeidelActor(rows, iterations))
 
-  case class Result(x: Double, index: Int)
-
-  case class XRequest(old: Array[Double], current: Array[Double])
+  case class XRequest(old: Array[Double], current: Array[Double]) {
+    override def toString: String = this.old.mkString("[", ", ", "]") + "\\" + this.current.mkString("[", ", ", "]")
+  }
 
 }

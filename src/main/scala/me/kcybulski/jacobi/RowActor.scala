@@ -22,6 +22,8 @@ object RowActor {
 
   def props(A: Row, b: Double, index: Int) = Props(new RowActor(A, b, index))
 
-  case class XRequest(x: Array[Double], requester: ActorRef)
+  case class XRequest(x: Array[Double], requester: ActorRef) {
+    override def toString: String = x.mkString("[", ", ", "]")
+  }
 
 }

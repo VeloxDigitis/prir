@@ -8,7 +8,7 @@ import me.kcybulski.jacobi.RowActor.XRequest
 
 class JacobiActor(rows: Array[Array[Double]]) extends Actor with ActorLogging {
 
-  private var i = 0
+  private var iteration = 0
   private val rowActors = rows
       .zipWithIndex
     .map{case (e, i) => (e.map(_ / e(i)), i)}
@@ -25,23 +25,23 @@ class JacobiActor(rows: Array[Array[Double]]) extends Actor with ActorLogging {
   override def receive: Receive = LoggingReceive {
 
     case result: Result =>
-      x(i + 1)(result.index) = result.x
+      x(iteration + 1)(result.index) = result.x
 
-      if(!x(i + 1).exists(s => s.isNaN)) {
-        i = i + 1
-        if(x(i).zip(x(i - 1))
+      if(!x(iteration + 1).exists(s => s.isNaN)) {
+        iteration = iteration + 1
+        if(x(iteration).zip(x(iteration - 1))
           .map(z => Math.abs(z._1 - z._2))
           .exists(v => v > 0.001))
           jacobi()
         else
-          log.info(x(i).mkString("[", ", ", "]"))
+          log.info(x(iteration).mkString("[", ", ", "]"))
       }
 
   }
 
   private def jacobi(): Unit = {
     this.x = this.x.:+(Array.fill[Double](rowActors.length)(Double.NaN))
-    this.rowActors.foreach(_ ! XRequest(x(i), self))
+    this.rowActors.foreach(_ ! XRequest(x(iteration), self))
   }
 }
 

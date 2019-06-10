@@ -10,10 +10,9 @@ class GaussSeidelRow(A: Array[Double], b: Double, index: Int, boss: ActorRef) ex
 
   override def receive: Receive = LoggingReceive {
     case next: ActorRef => this.next = Option(next)
-    case x: XRequest => {
+    case x: XRequest =>
       val result = XRequest(x.old, x.current.:+(f(x)))
       next.fold(boss ! result)(_ ! result)
-    }
   }
 
   def f(req: XRequest): Double = {
