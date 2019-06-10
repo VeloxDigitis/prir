@@ -6,7 +6,7 @@ import me.kcybulski.Start.Row
 import me.kcybulski.jacobi.JacobiActor.Result
 import me.kcybulski.jacobi.RowActor.XRequest
 
-class JacobiActor(rows: Array[Array[Double]], iterations: Int) extends Actor with ActorLogging {
+class JacobiActor(rows: Array[Array[Double]]) extends Actor with ActorLogging {
 
   private var i = 0
   private val rowActors = rows
@@ -18,8 +18,7 @@ class JacobiActor(rows: Array[Array[Double]], iterations: Int) extends Actor wit
       })
 
 
-  var x: Array[Array[Double]] = Array.fill(iterations, rowActors.length)(Double.NaN)
-  x(0) = Array.fill[Double](rowActors.length)(0)
+  var x: Array[Array[Double]] = Array.fill(1, rowActors.length)(0)
 
   jacobi()
 
@@ -30,9 +29,7 @@ class JacobiActor(rows: Array[Array[Double]], iterations: Int) extends Actor wit
 
       if(!x(i + 1).exists(s => s.isNaN)) {
         i = i + 1
-        log.debug("Iteration {}", i)
-        if(i < x.length - 1 && x(i)
-          .zip(x(i - 1))
+        if(x(i).zip(x(i - 1))
           .map(z => Math.abs(z._1 - z._2))
           .exists(v => v > 0.001))
           jacobi()
@@ -43,13 +40,14 @@ class JacobiActor(rows: Array[Array[Double]], iterations: Int) extends Actor wit
   }
 
   private def jacobi(): Unit = {
+    this.x = this.x.:+(Array.fill[Double](rowActors.length)(Double.NaN))
     this.rowActors.foreach(_ ! XRequest(x(i), self))
   }
 }
 
 object JacobiActor {
 
-  def props(rows: Array[Array[Double]], iterations: Int = 100) = Props(new JacobiActor(rows, iterations))
+  def props(rows: Array[Array[Double]]) = Props(new JacobiActor(rows))
 
   case class Result(x: Double, index: Int)
 
