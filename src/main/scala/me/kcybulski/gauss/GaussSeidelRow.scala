@@ -2,28 +2,33 @@ package me.kcybulski.gauss
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.event.LoggingReceive
-import me.kcybulski.gauss.GaussSeidelActor.XRequest
+import me.kcybulski.gauss.GaussSeidelActor.{XCurrentRequest, XOldRequest}
 
 class GaussSeidelRow(A: Array[Double], b: Double, index: Int, boss: ActorRef) extends Actor with ActorLogging {
 
   var next: Option[ActorRef] = Option.empty
+  var sum = 0.0
 
   override def receive: Receive = LoggingReceive {
     case next: ActorRef => this.next = Option(next)
-    case x: XRequest =>
-      val result = XRequest(x.old, x.current.:+(f(x)))
-      next.fold(boss ! result)(_ ! result)
-  }
-
-  def f(req: XRequest): Double = {
-    b + A
+    case x: XOldRequest => sum = b + A
       .zipWithIndex
       .map{
-        case (v, i) if i < this.index => v * -req.current(i)
-        case (_, i) if i == this.index => 0
-        case (v, i) if i > this.index => v * -req.old(i)
+        case (v, i) if i > this.index => v * -x.values(i)
+        case _ => 0
       }
       .sum
+    case x: XCurrentRequest =>
+      val result = XCurrentRequest(
+        x.values :+ sum + A
+          .zipWithIndex
+          .map{
+            case (v, i) if i < this.index => v * -x.values(i)
+            case _ => 0
+          }
+          .sum
+      )
+      next.fold(boss ! result)(_ ! result)
   }
 
 }

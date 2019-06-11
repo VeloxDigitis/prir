@@ -2,7 +2,7 @@ package me.kcybulski.gauss
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.event.LoggingReceive
-import me.kcybulski.gauss.GaussSeidelActor.XRequest
+import me.kcybulski.gauss.GaussSeidelActor.{XCurrentRequest, XOldRequest}
 
 class GaussSeidelActor(rows: Array[Array[Double]], iterations: Int) extends Actor with ActorLogging {
 
@@ -13,26 +13,28 @@ class GaussSeidelActor(rows: Array[Array[Double]], iterations: Int) extends Acto
         case( row: Array[Double], index: Int ) =>
           context.actorOf(GaussSeidelRow.props(row.dropRight(1), row.last, index, self), s"row-$index")
       })
+  private var lastResults = Array.fill(rows.length)(0.0)
 
   rowActors.reduceLeft{(a: ActorRef, b: ActorRef) => a ! b; b}
 
-  gaussSeidel(Array.fill(rows.length)(0.0))
+  gaussSeidel(lastResults)
 
   override def receive: Receive = LoggingReceive {
 
-    case result: XRequest =>
-      if(result.current
-        .zip(result.old)
-        .map(z => Math.abs(z._1 - z._2))
-        .exists(_ > 0.001))
-        gaussSeidel(result.current)
+    case result: XCurrentRequest =>
+      if(lastResults.zip(result.values)
+      .map(x => Math.abs(x._1 - x._2))
+      .exists(_ > 0.001))
+        gaussSeidel(result.values)
       else
-        log.info("{}", result.current.mkString("[", ",", "]"))
+        log.info("{}", result)
 
   }
 
   def gaussSeidel(current: Array[Double]) {
-    rowActors(0) ! XRequest(current, Array.empty[Double])
+    this.lastResults = current
+    rowActors.foreach(_ ! XOldRequest(current))
+    rowActors(0) ! XCurrentRequest(Array.empty[Double])
   }
 
 }
@@ -42,8 +44,12 @@ object GaussSeidelActor {
 
   def props(rows: Array[Array[Double]], iterations: Int = 100) = Props(new GaussSeidelActor(rows, iterations))
 
-  case class XRequest(old: Array[Double], current: Array[Double]) {
-    override def toString: String = this.old.mkString("[", ", ", "]") + "\\" + this.current.mkString("[", ", ", "]")
+  case class XOldRequest(values: Array[Double]) {
+    override def toString: String = this.values.mkString("[", ", ", "]")
+  }
+
+  case class XCurrentRequest(values: Array[Double]) {
+    override def toString: String = this.values.mkString("[", ", ", "]")
   }
 
 }
